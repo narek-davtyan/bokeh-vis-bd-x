@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <link rel="shortcut icon" href="/static/favicon/favicon.ico">
+<!--       <link rel="stylesheet" href="/static/style.css">
+ -->      <style>
+        div.scrollable {
+            overflow: auto;
+        }
+        .bk-root .bk-btn-primary.bk-active {
+            /* color: aquamarine; */
+            background-color:hsl(208, 58%, 39%);
+        }
+        .bk-root .bk-btn-warning.bk-active {
+            /* color: aquamarine; */
+            background-color:#d48310;
+        }
+      </style>
+      <meta charset="utf-8">
+      {{ bokeh_css }}
+      {{ bokeh_js }}
+    </head>
+    <body>
+      {{ plot_div|indent(8) }}
+      {{ plot_script|indent(8) }}
+    </body>
+</html>
