@@ -9,7 +9,7 @@ from pandarallel import pandarallel
 pandarallel.initialize()
 
 # Load data
-df_orig = pd.read_excel(r'result_data_cdd_2.xlsx', names=['company', 'client_name', 'sector', 'country', 'service', 'commercial', 'ca_total', 'cp', 'town', 'recommendation', 'easiness', 'question_one', 'question_one_filtered_lemmas', 'rec_sc', 'eas_sc'])#.astype({'country':'category', 'company':'int16', 'service':'category', 'recommendation':'int8', 'question_one':'string', 'easiness':'int8', 'question_two':'string'})
+df_orig = pd.read_excel(r'bokeh-vis-bd-x/result_data_cdd_2.xlsx', names=['company', 'client_name', 'sector', 'country', 'service', 'commercial', 'ca_total', 'cp', 'town', 'recommendation', 'easiness', 'question_one', 'question_one_filtered_lemmas', 'rec_sc', 'eas_sc'])#.astype({'country':'category', 'company':'int16', 'service':'category', 'recommendation':'int8', 'question_one':'string', 'easiness':'int8', 'question_two':'string'})
 
 # Transform filtered lemmas string into list of strings
 df_orig['question_one_filtered_lemmas'] = df_orig.loc[~df_orig['question_one_filtered_lemmas'].isna()]['question_one_filtered_lemmas'].parallel_apply(lambda x: x[2:-2].split("', '"))
