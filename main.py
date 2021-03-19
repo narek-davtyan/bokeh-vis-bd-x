@@ -9,10 +9,16 @@ from pandarallel import pandarallel
 pandarallel.initialize()
 
 # Load data
-df_orig = pd.read_excel(r'bokeh-vis-bd-x/result_data_cdd_2.xlsx', names=['company', 'client_name', 'sector', 'country', 'service', 'commercial', 'ca_total', 'cp', 'town', 'recommendation', 'easiness', 'question_one', 'question_one_filtered_lemmas', 'rec_sc', 'eas_sc'])#.astype({'country':'category', 'company':'int16', 'service':'category', 'recommendation':'int8', 'question_one':'string', 'easiness':'int8', 'question_two':'string'})
+df_orig = pd.read_excel(r'bokeh-vis-bd-x/result_data_x.xlsx', names=['index', 'filter_one', 'filter_two', 'filter_three', 'filter_four', 'recommendation', 'easiness', 'question_one', 'question_two', 'question_three', 'question_four', 'rec_sc', 'eas_sc', \
+    'sentiment', 'question_one_filtered_lemmas', 'question_two_filtered_lemmas', 'question_three_filtered_lemmas', 'question_four_filtered_lemmas'])
+
+# df_orig = pd.read_excel(r'result_data_cdd_2.xlsx', names=['company', 'client_name', 'sector', 'country', 'service', 'commercial', 'ca_total', 'cp', 'town', 'recommendation', 'easiness', 'question_one', 'question_one_filtered_lemmas', 'rec_sc', 'eas_sc'])#.astype({'country':'category', 'company':'int16', 'service':'category', 'recommendation':'int8', 'question_one':'string', 'easiness':'int8', 'question_two':'string'})
 
 # Transform filtered lemmas string into list of strings
 df_orig['question_one_filtered_lemmas'] = df_orig.loc[~df_orig['question_one_filtered_lemmas'].isna()]['question_one_filtered_lemmas'].parallel_apply(lambda x: x[2:-2].split("', '"))
+df_orig['question_two_filtered_lemmas'] = df_orig.loc[~df_orig['question_two_filtered_lemmas'].isna()]['question_two_filtered_lemmas'].parallel_apply(lambda x: x[2:-2].split("', '"))
+df_orig['question_three_filtered_lemmas'] = df_orig.loc[~df_orig['question_three_filtered_lemmas'].isna()]['question_three_filtered_lemmas'].parallel_apply(lambda x: x[2:-2].split("', '"))
+df_orig['question_four_filtered_lemmas'] = df_orig.loc[~df_orig['question_four_filtered_lemmas'].isna()]['question_four_filtered_lemmas'].parallel_apply(lambda x: x[2:-2].split("', '"))
 
 # Create dictionary of all plots, filter lock, filters
 general_dict = {}
@@ -21,7 +27,7 @@ general_dict = {}
 
 def calculate_barycenter(df_temp, country_list):   
     # Create visual data points
-    df_tempo = df_temp[['recommendation', 'easiness', 'country']].groupby(['recommendation', 'easiness'],as_index=False).count().rename(columns={'country' : 'sum'}).astype({'sum': 'float32'})
+    df_tempo = df_temp[['recommendation', 'easiness', 'filter_three']].groupby(['recommendation', 'easiness'],as_index=False).count().rename(columns={'filter_three' : 'sum'}).astype({'sum': 'float32'})
     
     # df_tempy = df_tempo
     df_tempy = pd.merge(df_temp, df_tempo, how='left', on=['recommendation', 'easiness'])
@@ -55,13 +61,13 @@ def calculate_barycenter(df_temp, country_list):
 # Unset initial filter lock
 general_dict['filter_called'] = False
 # Set initial filters to all
-general_dict['filter_list'] = np.concatenate((df_orig.country.unique(),df_orig.service.unique()))
-general_dict['full_filter_list'] = np.concatenate((df_orig.country.unique(),df_orig.service.unique()))
+general_dict['filter_list'] = np.concatenate((df_orig.filter_one.unique(),df_orig.filter_two.unique(),df_orig.filter_three.unique(),df_orig.filter_four.unique()))
+general_dict['full_filter_list'] = np.concatenate((df_orig.filter_one.unique(),df_orig.filter_two.unique(),df_orig.filter_three.unique(),df_orig.filter_four.unique()))
 
 # Calculating filtered dataframe
-filtered_df = df_orig.loc[(df_orig['country'].isin(general_dict['filter_list']) & df_orig['service'].isin(general_dict['filter_list']))]
+filtered_df = df_orig.loc[(df_orig['filter_one'].isin(general_dict['filter_list']) & df_orig['filter_two'].isin(general_dict['filter_list']) & df_orig['filter_three'].isin(general_dict['filter_list']) & df_orig['filter_four'].isin(general_dict['filter_list']))]
 # Calculating new data points, barycenter and its edges
-df_points, barycenter, df_bary = calculate_barycenter(filtered_df[['recommendation', 'easiness', 'company', 'country', 'service', 'rec_sc', 'eas_sc']], general_dict['filter_list'])
+df_points, barycenter, df_bary = calculate_barycenter(filtered_df[['index', 'recommendation', 'easiness', 'filter_one', 'filter_two', 'filter_three', 'filter_four', 'rec_sc', 'eas_sc']], general_dict['filter_list'])
 
 ###################################################################################
 ###################################################################################
@@ -74,11 +80,11 @@ from bokeh.layouts import column, row, Spacer
 ############################## Visual 4 - Data Table ##############################
 # Create data table structure
 data_columns = [
-        TableColumn(field="company", title="Company"),
-        TableColumn(field="service", title="Service"),
-        TableColumn(field="country", title="Country"),
+        TableColumn(field="filter_one", title="Company"),
+        TableColumn(field="filter_two", title="Service"),
+        TableColumn(field="filter_three", title="Country"),
     ]
-data_source = ColumnDataSource(pd.DataFrame(columns=['country', 'service', 'company']))
+data_source = ColumnDataSource(pd.DataFrame(columns=['filter_one', 'filter_two', 'filter_three']))
 data_table = DataTable(source=data_source, columns=data_columns, width=400, height=600)
 
 ###################################################################################
@@ -197,13 +203,51 @@ def callback_h(selected_state):
         for button in logical_buttons2:
             if button.active:
                 selected_country_list.append(button.name)
+    if filter_button5.active:
+        general_dict['filter_called'] = True
+        for button in logical_buttons3:
+            button.active = False
+        general_dict['filter_called'] = False
+        filter_button5.active = False
+    elif filter_button7.active:
+        general_dict['filter_called'] = True
+        for button in logical_buttons3:
+            button.active = True
+            selected_country_list.append(button.name)
+        general_dict['filter_called'] = False
+        filter_button7.active = False
+        if len(selected_country_list) == len(general_dict['full_filter_list']):
+            return None
+    else:
+        for button in logical_buttons3:
+            if button.active:
+                selected_country_list.append(button.name)
+    if filter_button6.active:
+        general_dict['filter_called'] = True
+        for button in logical_buttons4:
+            button.active = False
+        general_dict['filter_called'] = False
+        filter_button6.active = False
+    elif filter_button8.active:
+        general_dict['filter_called'] = True
+        for button in logical_buttons4:
+            button.active = True
+            selected_country_list.append(button.name)
+        general_dict['filter_called'] = False
+        filter_button8.active = False
+        if len(selected_country_list) == len(general_dict['full_filter_list']):
+            return None
+    else:
+        for button in logical_buttons4:
+            if button.active:
+                selected_country_list.append(button.name)
 
     # Setting new filters
     general_dict['filter_list'] = selected_country_list
     # Calculating new filtered dataframe
-    filtered_df = df_orig.loc[(df_orig['country'].isin(general_dict['filter_list']) & df_orig['service'].isin(general_dict['filter_list']))]
+    filtered_df = df_orig.loc[(df_orig['filter_one'].isin(general_dict['filter_list']) & df_orig['filter_two'].isin(general_dict['filter_list']) & df_orig['filter_three'].isin(general_dict['filter_list']) & df_orig['filter_four'].isin(general_dict['filter_list']))]
     # Calculating new data points, barycenter and its edges
-    df_points, barycenter, df_bary = calculate_barycenter(filtered_df[['recommendation', 'easiness', 'company', 'country', 'service', 'rec_sc', 'eas_sc']], general_dict['filter_list'])
+    df_points, barycenter, df_bary = calculate_barycenter(filtered_df[['index', 'recommendation', 'easiness', 'filter_one', 'filter_two', 'filter_three', 'filter_four', 'rec_sc', 'eas_sc']], general_dict['filter_list'])
     
     # Create data source for points plot
     general_dict['data_points'] = ColumnDataSource(df_points)
@@ -240,11 +284,11 @@ def callback_h(selected_state):
     general_dict['emotions_easy_score'].patch({ 'right' : [(0,easy_score)], 'left' : [(0,easy_score)] })
 
     # Calculate new word frequencies
-    d_freq_pv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_pv.items()}
+    d_freq_pv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] else 0 for item in v[:]]) for k, v in d_pv.items()}
     dict_freq_pv = d_freq_pv
-    d_freq_uv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_uv.items()}
+    d_freq_uv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] else 0 for item in v[:]]) for k, v in d_uv.items()}
     d_freq_uv = pd.DataFrame.from_dict({k: d_freq_uv[k] for k in d_freq_pv.keys() if k in d_freq_uv}, orient='index', columns=['freq_uv']).reset_index()
-    d_freq_nv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_nv.items()}
+    d_freq_nv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] else 0 for item in v[:]]) for k, v in d_nv.items()}
     d_freq_nv = pd.DataFrame.from_dict({k: d_freq_nv[k] for k in d_freq_pv.keys() if k in d_freq_nv}, orient='index', columns=['freq_nv']).reset_index()
     d_freq_pv = pd.DataFrame.from_dict(d_freq_pv, orient='index', columns=['freq_pv']).reset_index()
     frequency_df = d_freq_pv.merge(d_freq_uv, how='left').merge(d_freq_nv, how='left').fillna(0).astype({'index':'category', 'freq_pv':'int16', 'freq_uv':'int16', 'freq_nv':'int16'}).rename(columns = {'index':'freq_w'})
@@ -275,12 +319,12 @@ def callback(attr, old, new):
         recommendations.append(general_dict['data_points'].data['recommendation'][inds[i]])
         easinesses.append(general_dict['data_points'].data['easiness'][inds[i]])
     
-    current = df_points.loc[(df_points['recommendation'].isin(recommendations)) & (df_points['easiness'].isin(easinesses)) & (df_points['country'].isin(general_dict['filter_list'])) & (df_points['service'].isin(general_dict['filter_list']))]
+    current = df_points.loc[(df_points['recommendation'].isin(recommendations)) & (df_points['easiness'].isin(easinesses)) & (df_points['filter_one'].isin(general_dict['filter_list'])) & (df_points['filter_two'].isin(general_dict['filter_list'])) & (df_points['filter_three'].isin(general_dict['filter_list'])) & (df_points['filter_four'].isin(general_dict['filter_list']))]
     
     data_source.data = {
-            'country' : current.country,
-            'service' : current.service,
-            'company' : current.company,
+            'filter_one' : current.filter_one,
+            'filter_two' : current.filter_two,
+            'filter_three' : current.filter_three,
         }
     
 #---------------------------- ^ Ineractive Triggers ^ ----------------------------#
@@ -307,36 +351,64 @@ general_dict['points_plot'].circle(x=barycenter[0], y=barycenter[1], color='fire
 ###################################################################################
 ############################ Visual 2 - Buttons Columns ###########################
 # buttons1, buttons2 = ([],[])
-logical_buttons1, logical_buttons2 = ([],[])
-for country in df_orig.country.unique():
+logical_buttons1, logical_buttons2, logical_buttons3, logical_buttons4 = ([],[],[],[])
+for country in df_orig.filter_one.unique():
     # Plot buttons
-    button = Toggle(label=country, button_type="warning", name=country, width_policy='fixed', width=290)
+    button = Toggle(label=str(country), button_type="warning", name=str(country), width_policy='fixed', width=105)
     button.active = True
     button.on_click(callback_h)
     logical_buttons1.append(button)
-for country in df_orig.service.unique():
+for country in df_orig.filter_two.unique():
     # Plot buttons
-    button = Toggle(label=country, button_type="primary", name=country, width_policy='fixed', width=290)
+    button = Toggle(label=str(country), button_type="primary", name=str(country), width_policy='fixed', width=105)
     button.active = True
     button.on_click(callback_h)
     logical_buttons2.append(button)
+for country in df_orig.filter_three.unique():
+    # Plot buttons
+    button = Toggle(label=str(country), button_type="warning", name=str(country), width_policy='fixed', width=105)
+    button.active = True
+    button.on_click(callback_h)
+    logical_buttons3.append(button)
+for country in df_orig.filter_four.unique():
+    # Plot buttons
+    button = Toggle(label=str(country), button_type="primary", name=str(country), width_policy='fixed', width=105)
+    button.active = True
+    button.on_click(callback_h)
+    logical_buttons4.append(button)
 
-filter_button1 = Toggle(label='Select None', button_type="warning", name='filter1', width_policy='fixed', width=290)
-filter_button2 = Toggle(label='Select None', button_type="primary", name='filter2', width_policy='fixed', width=290)
+filter_button1 = Toggle(label='Select None', button_type="warning", name='filter1', width_policy='fixed', width=105)
+filter_button2 = Toggle(label='Select None', button_type="primary", name='filter2', width_policy='fixed', width=105)
 filter_button1.active = False
 filter_button2.active = False
 filter_button1.on_click(callback_h)
 filter_button2.on_click(callback_h)
 
-filter_button3 = Toggle(label='Select All', button_type="warning", name='filter3', width_policy='fixed', width=290)
-filter_button4 = Toggle(label='Select All', button_type="primary", name='filter4', width_policy='fixed', width=290)
+filter_button3 = Toggle(label='Select All', button_type="warning", name='filter3', width_policy='fixed', width=105)
+filter_button4 = Toggle(label='Select All', button_type="primary", name='filter4', width_policy='fixed', width=105)
 filter_button3.active = False
 filter_button4.active = False
 filter_button3.on_click(callback_h)
 filter_button4.on_click(callback_h)
 
+filter_button5 = Toggle(label='Select None', button_type="warning", name='filter5', width_policy='fixed', width=105)
+filter_button6 = Toggle(label='Select None', button_type="primary", name='filter6', width_policy='fixed', width=105)
+filter_button5.active = False
+filter_button6.active = False
+filter_button5.on_click(callback_h)
+filter_button6.on_click(callback_h)
+
+filter_button7 = Toggle(label='Select All', button_type="warning", name='filter7', width_policy='fixed', width=105)
+filter_button8 = Toggle(label='Select All', button_type="primary", name='filter8', width_policy='fixed', width=105)
+filter_button7.active = False
+filter_button8.active = False
+filter_button7.on_click(callback_h)
+filter_button8.on_click(callback_h)
+
 buttons1 = [filter_button1, filter_button3].extend(logical_buttons1)
 buttons2 = [filter_button2, filter_button4].extend(logical_buttons2)
+buttons3 = [filter_button5, filter_button7].extend(logical_buttons3)
+buttons4 = [filter_button6, filter_button8].extend(logical_buttons4)
 ###################################################################################
 ###################################################################################
 
@@ -405,45 +477,58 @@ general_dict['emotions_plot'].add_layout(citation)
 ############################# Visual 4 - Frequency Plot ###########################
 
 # Split data into recommendation and easiness frames
-df_one = filtered_df.loc[~filtered_df['question_one_filtered_lemmas'].isna(), ['recommendation', 'question_one_filtered_lemmas', 'country', 'service']]
+df_one = filtered_df.loc[~filtered_df['question_one_filtered_lemmas'].isna(), ['sentiment', 'question_one_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+df_two = filtered_df.loc[~filtered_df['question_two_filtered_lemmas'].isna(), ['sentiment', 'question_two_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+df_three = filtered_df.loc[~filtered_df['question_three_filtered_lemmas'].isna(), ['sentiment', 'question_three_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+df_four = filtered_df.loc[~filtered_df['question_four_filtered_lemmas'].isna(), ['sentiment', 'question_four_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+
 
 # Fill sentiment column
-df_one['sentiment'] = (np.select(condlist=[df_one['recommendation'] < 7, df_one['recommendation'] < 9], choicelist=[-1, 0], default=+1))
-df_one = df_one.astype({'sentiment':'int8'})
+# df_one['sentiment'] = (np.select(condlist=[df_one['recommendation'] < 7, df_one['recommendation'] < 9], choicelist=[-1, 0], default=+1))
+# df_one = df_one.astype({'sentiment':'int8'})
 
 d_pv = dict()
 
-selected_lemmas_pv = df_one.loc[(df_one['sentiment'] > 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas','country', 'service']]
+selected_lemmas_pv = df_one.loc[(df_one['sentiment'] > 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_two.loc[(df_two['sentiment'] > 0.0) & (df_two['question_two_filtered_lemmas'].str.len() > 1)][['question_two_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_two_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_three.loc[(df_three['sentiment'] > 0.0) & (df_three['question_three_filtered_lemmas'].str.len() > 1)][['question_three_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_three_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_four.loc[(df_four['sentiment'] > 0.0) & (df_four['question_four_filtered_lemmas'].str.len() > 1)][['question_four_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_four_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
 for lemmas_row in selected_lemmas_pv.itertuples():
     for word in lemmas_row[1]:
         if not word in d_pv:
-            d_pv[word] = np.array([[lemmas_row[2],lemmas_row[3]]])
-        d_pv[word] = np.vstack((d_pv[word],np.array(  [[lemmas_row[2],lemmas_row[3]]]  ) ))
+            d_pv[word] = np.array([[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]])
+        d_pv[word] = np.vstack((d_pv[word],np.array(  [[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]]  ) ))
 
 d_uv = dict()
 
-selected_lemmas_pv = df_one.loc[(df_one['sentiment'] == 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas','country', 'service']]
+selected_lemmas_pv = df_one.loc[(df_one['sentiment'] == 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_two.loc[(df_two['sentiment'] == 0.0) & (df_two['question_two_filtered_lemmas'].str.len() > 1)][['question_two_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_two_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_three.loc[(df_three['sentiment'] == 0.0) & (df_three['question_three_filtered_lemmas'].str.len() > 1)][['question_three_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_three_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_four.loc[(df_four['sentiment'] == 0.0) & (df_four['question_four_filtered_lemmas'].str.len() > 1)][['question_four_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_four_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
 for lemmas_row in selected_lemmas_pv.itertuples():
     for word in lemmas_row[1]:
         if not word in d_uv:
-            d_uv[word] = np.array([[lemmas_row[2],lemmas_row[3]]])
-        d_uv[word] = np.vstack((d_pv[word],np.array(  [[lemmas_row[2],lemmas_row[3]]]  ) ))
+            d_uv[word] = np.array([[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]])
+        d_uv[word] = np.vstack((d_uv[word],np.array(  [[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]]  ) ))
 
 d_nv = dict()
 
-selected_lemmas_pv = df_one.loc[(df_one['sentiment'] < 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas','country', 'service']]
+selected_lemmas_pv = df_one.loc[(df_one['sentiment'] < 0.0) & (df_one['question_one_filtered_lemmas'].str.len() > 1)][['question_one_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']]
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_two.loc[(df_two['sentiment'] < 0.0) & (df_two['question_two_filtered_lemmas'].str.len() > 1)][['question_two_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_two_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_three.loc[(df_three['sentiment'] < 0.0) & (df_three['question_three_filtered_lemmas'].str.len() > 1)][['question_three_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_three_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
+selected_lemmas_pv = pd.concat([selected_lemmas_pv, df_four.loc[(df_four['sentiment'] < 0.0) & (df_four['question_four_filtered_lemmas'].str.len() > 1)][['question_four_filtered_lemmas', 'filter_one', 'filter_two', 'filter_three', 'filter_four']].rename(columns={'question_four_filtered_lemmas':'question_one_filtered_lemmas'})  ], ignore_index=True)
 for lemmas_row in selected_lemmas_pv.itertuples():
     for word in lemmas_row[1]:
         if not word in d_nv:
-            d_nv[word] = np.array([[lemmas_row[2],lemmas_row[3]]])
-        d_nv[word] = np.vstack((d_nv[word],np.array(  [[lemmas_row[2],lemmas_row[3]]]  ) ))
+            d_nv[word] = np.array([[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]])
+        d_nv[word] = np.vstack((d_nv[word],np.array(  [[lemmas_row[2],lemmas_row[3],lemmas_row[4],lemmas_row[5]]]  ) ))
 
 
 
-d_freq_pv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_pv.items()}
-d_freq_uv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_uv.items()}
+d_freq_pv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_pv.items()}
+d_freq_uv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_uv.items()}
 d_freq_uv = pd.DataFrame.from_dict({k: d_freq_uv[k] for k in d_freq_pv.keys() if k in d_freq_uv}, orient='index', columns=['freq_uv']).reset_index()
-d_freq_nv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_nv.items()}
+d_freq_nv = {k: sum([1 if item[0] in general_dict['filter_list'] and item[1] in general_dict['filter_list'] and item[2] in general_dict['filter_list'] and item[3] in general_dict['filter_list'] else 0 for item in v[:]]) for k, v in d_nv.items()}
 d_freq_nv = pd.DataFrame.from_dict({k: d_freq_nv[k] for k in d_freq_pv.keys() if k in d_freq_nv}, orient='index', columns=['freq_nv']).reset_index()
 d_freq_pv = pd.DataFrame.from_dict(d_freq_pv, orient='index', columns=['freq_pv']).reset_index()
 frequency_df = d_freq_pv.merge(d_freq_uv, how='left').merge(d_freq_nv, how='left').fillna(0).astype({'index':'category', 'freq_pv':'int16', 'freq_uv':'int16', 'freq_nv':'int16'}).rename(columns = {'index':'freq_w'})
@@ -451,7 +536,7 @@ frequency_df = d_freq_pv.merge(d_freq_uv, how='left').merge(d_freq_nv, how='left
 general_dict['freq_words_slice'] = slice(len(frequency_df))
 general_dict['freq_source'] = ColumnDataSource(frequency_df)
 
-general_dict['freq_plot'] = figure(y_range=frequency_df['freq_w'].to_list(), plot_height=250, plot_width=500, match_aspect=True, toolbar_location=None, tools="", outline_line_color=None, output_backend="webgl", name='freq_f')
+general_dict['freq_plot'] = figure(y_range=frequency_df['freq_w'].to_list(), plot_height=450, plot_width=500, match_aspect=True, toolbar_location=None, tools="", outline_line_color=None, output_backend="webgl", name='freq_f')
 
 general_dict['freq_plot'].title.text = "Frequencies"
 general_dict['freq_plot'].title.align = "center"
@@ -507,9 +592,11 @@ general_dict['words_plot'].y_range.range_padding = 0
 ###################################################################################
 
 # Connect all plots into one object and set layout
-buttons_1_col = column(filter_button1, filter_button3, column(logical_buttons1, sizing_mode='scale_height', height=520, width=320, css_classes=['scrollable'], max_height=520, min_width=320))
-buttons_2_col = column(filter_button2, filter_button4, column(logical_buttons2, sizing_mode='scale_height', height=520, width=320, css_classes=['scrollable'], max_height=520, min_width=320))
-buttons_row = row(children=[buttons_1_col, buttons_2_col], height=600, max_height=600)
+buttons_1_col = column(filter_button1, filter_button3, column(logical_buttons1, height=520, width=130, css_classes=['scrollable'], max_height=520, min_width=130))
+buttons_2_col = column(filter_button2, filter_button4, column(logical_buttons2, height=520, width=130, css_classes=['scrollable'], max_height=520, min_width=130))
+buttons_3_col = column(filter_button5, filter_button7, column(logical_buttons3, height=520, width=130, css_classes=['scrollable'], max_height=520, min_width=130))
+buttons_4_col = column(filter_button6, filter_button8, column(logical_buttons4, height=520, width=130, css_classes=['scrollable'], max_height=520, min_width=130))
+buttons_row = row(children=[buttons_1_col, buttons_2_col, buttons_3_col, buttons_4_col], height=600, max_height=600)
 
 
 # header = Div(text="<link rel='stylesheet' type='text/css' href='./Templates/styles.css'>")
@@ -518,3 +605,7 @@ buttons_row = row(children=[buttons_1_col, buttons_2_col], height=600, max_heigh
 
 
 curdoc().add_root(column(row(general_dict['points_plot'], buttons_row, data_table), Spacer(height=50), row(general_dict['freq_plot'], general_dict['words_plot'], general_dict['emotions_plot'])))
+
+
+
+# curdoc().add_root(column(row(general_dict['points_plot'], buttons_row, data_table), Spacer(height=50), row(general_dict['freq_plot'], general_dict['emotions_plot'])))
